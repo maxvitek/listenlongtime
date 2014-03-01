@@ -1,10 +1,10 @@
-ListenLongTime
+ListenLongtime
 ==============
 
 ListenLongTime is a python module which uses PyAudio
 to create a listening object which is capable of listening
 for long periods of time.  When it hears a sound (hopefully
-speech)above its configurable silence threshold, it captures
+speech) above its configurable silence threshold, it captures
 the audio until it hears some period of silence.  At this
 point, it will transform the snippet into a flac format and
 sends it to Google's undocumented web-to-speech api, and
