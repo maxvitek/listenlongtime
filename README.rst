@@ -18,7 +18,8 @@ Usage:
 
     >>>from llt import LongListener
     >>>lstr = LongListener(vis=True)
-    >>>lstr.listen()
+    >>>speech_data = lstr.listen()
+    >>>lstr.transcribe(speech_data)
     ...
 
 Contribute
