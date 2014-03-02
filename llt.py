@@ -76,7 +76,7 @@ class LongListener(object):
 
     def listen(self):
         """
-        Listen long time, returns transcribed speech in a dictionary
+        Listen long time, returns flacified data
         """
         # initialize
         self.sample_size = None
@@ -122,14 +122,11 @@ class LongListener(object):
 
         flac_data = self.flaccify(''.join(list(previous_audio) + frames))
 
-        # Send file to Google and get a response
-        data = self.transcribe(flac_data)
-
         stream.stop_stream()
         stream.close()
         p.terminate()
 
-        return data
+        return flac_data
 
     def flaccify(self, frames):
         """
