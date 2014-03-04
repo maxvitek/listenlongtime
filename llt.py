@@ -10,6 +10,7 @@ import subprocess
 import os
 from termcolor import colored
 import sys
+import logging
 
 
 class LongListener(object):
@@ -55,12 +56,15 @@ class LongListener(object):
         self.started = False
         self.first_pass = True
         self.visualization = vis
+        self.logger = logging.getLogger()
 
     def transcribe(self, speech):
         """
         Transcribes speech using the configured API, returns dictionary
         """
         r = requests.post(self.speech_api['url'], speech, params=self.speech_api['params'], headers=self.speech_api['headers'])
+
+        self.logger.debug('Google Speech Response: ', r.text)
 
         if r.text.split('\n')[0] == u'{"result":[]}':  # google returns two json objects, first one might be empty
             text = r.text.split('\n')[1]  # TODO insert try block to catch a ValueError for empty results
@@ -97,7 +101,7 @@ class LongListener(object):
         frames = []
         chunks_per_second = self.rate / self.chunk
         rolling_window = deque(maxlen=self.silence_limit * chunks_per_second)
-        #Prepend audio to give a little buffer of silence at the start
+        # Prepend audio to give a little buffer of silence at the start
         previous_audio = deque(maxlen=self.prev_audio * chunks_per_second)
 
         #
@@ -120,7 +124,11 @@ class LongListener(object):
                 else:
                     previous_audio.append(cur_data)
 
-        flac_data = self.flaccify(''.join(list(previous_audio) + frames))
+        final_frames = list(previous_audio) + frames
+
+        self.logger.debug('Recording Captured: ' + str(len(final_frames) / chunks_per_second) + ' seconds')
+
+        flac_data = self.flaccify(final_frames)
 
         stream.stop_stream()
         stream.close()
