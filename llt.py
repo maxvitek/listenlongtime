@@ -112,17 +112,10 @@ class LongListener(object):
                 self.terminal_visual(rolling_window)
 
             # adaptive silence threshold
-            print('silence dynamism:')
-            #if len(rolling_window) >= int(self.silence_limit * chunks_per_second):
             if self.fixed_silence_threshold:
                 self.silence_threshold = self.fixed_silence_threshold
             else:
                 self.silence_threshold = mean(rolling_window) + self.silence_std_multilplier * std(rolling_window)
-            print(
-                colored(str(self.silence_threshold), 'white') + '  '
-                + colored(str(sum([x > self.silence_threshold for x in rolling_window])), 'cyan')
-            )
-            print([int(x) for x in rolling_window if x > self.silence_threshold])
 
             silence_threshold_window.append(self.silence_threshold)
 
