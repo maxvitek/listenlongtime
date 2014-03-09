@@ -21,6 +21,7 @@ class LongListener(object):
                  fixed_silence_threshold=None,
                  silence_std_multilplier=3.5,  # how many std out fires the trigger?
                  silence_limit=1,
+                 sample_limit=5,
                  prev_audio=0.5):
         """
         Set a bunch of constants
@@ -48,6 +49,7 @@ class LongListener(object):
         self.silence_threshold = None
         self.silence_std_multilplier = silence_std_multilplier
         self.silence_limit = silence_limit
+        self.sample_limit = sample_limit
         self.prev_audio = prev_audio
 
         self.sample_size = None
@@ -99,7 +101,7 @@ class LongListener(object):
         frames = []
         chunks_per_second = self.rate / self.chunk
         rolling_window = deque(maxlen=self.silence_limit * chunks_per_second)
-        silence_threshold_window = deque(maxlen=self.silence_limit * chunks_per_second)
+        silence_threshold_window = deque(maxlen=self.silence_limit * chunks_per_second * self.sample_limit)
         # Prepend audio to give a little buffer of silence at the start
         previous_audio = deque(maxlen=self.prev_audio * chunks_per_second)
 
