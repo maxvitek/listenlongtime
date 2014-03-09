@@ -17,7 +17,11 @@ class LongListener(object):
     """
     This is the listener object that can listen, transcribe, and return results
     """
-    def __init__(self, vis=False, silence_threshold=2500):
+    def __init__(self, vis=False,
+                 fixed_silence_threshold=None,
+                 silence_std_multilplier=3.5,  # how many std out fires the trigger?
+                 silence_limit=1,
+                 prev_audio=0.5):
         """
         Set a bunch of constants
         """
@@ -40,17 +44,11 @@ class LongListener(object):
         self.channels = 1
         self.rate = 44100
         self.output_filename = "output"
-        self.silence_threshold = silence_threshold  # The threshold intensity that defines silence
-                          # and noise signal (an int. lower than THRESHOLD is silence).
-
-        self.silence_limit = 1  # Silence limit in seconds. The max ammount of seconds where
-                           # only silence is recorded. When this time passes the
-                           # recording finishes and the file is delivered.
-
-        self.prev_audio = 0.5  # Previous audio (in seconds) to prepend. When noise
-                          # is detected, how much of previously recorded audio is
-                          # prepended. This helps to prevent chopping the beggining
-                          # of the phrase.
+        self.fixed_silence_threshold = fixed_silence_threshold
+        self.silence_threshold = None
+        self.silence_std_multilplier = silence_std_multilplier
+        self.silence_limit = silence_limit
+        self.prev_audio = prev_audio
 
         self.sample_size = None
         self.started = False
@@ -67,9 +65,9 @@ class LongListener(object):
         self.logger.debug('Google Speech Response: ', r.text)
 
         if r.text.split('\n')[0] == u'{"result":[]}':  # google returns two json objects, first one might be empty
-            text = r.text.split('\n')[1]  # TODO insert try block to catch a ValueError for empty results
+            text = r.text.split('\n')[1]
         else:
-            text = r.text.split('\n')[0]  # TODO insert try block to catch a ValueError for empty results
+            text = r.text.split('\n')[0]
 
         try:
             data = json.loads(text)
@@ -101,6 +99,7 @@ class LongListener(object):
         frames = []
         chunks_per_second = self.rate / self.chunk
         rolling_window = deque(maxlen=self.silence_limit * chunks_per_second)
+        silence_threshold_window = deque(maxlen=self.silence_limit * chunks_per_second)
         # Prepend audio to give a little buffer of silence at the start
         previous_audio = deque(maxlen=self.prev_audio * chunks_per_second)
 
@@ -112,8 +111,23 @@ class LongListener(object):
             if self.visualization:
                 self.terminal_visual(rolling_window)
 
+            # adaptive silence threshold
+            print('silence dynamism:')
+            #if len(rolling_window) >= int(self.silence_limit * chunks_per_second):
+            if self.fixed_silence_threshold:
+                self.silence_threshold = self.fixed_silence_threshold
+            else:
+                self.silence_threshold = mean(rolling_window) + self.silence_std_multilplier * std(rolling_window)
+            print(
+                colored(str(self.silence_threshold), 'white') + '  '
+                + colored(str(sum([x > self.silence_threshold for x in rolling_window])), 'cyan')
+            )
+            print([int(x) for x in rolling_window if x > self.silence_threshold])
+
+            silence_threshold_window.append(self.silence_threshold)
+
             if self.started:
-                if sum([x > self.silence_threshold for x in rolling_window]):
+                if sum([1 for x in zip(rolling_window, silence_threshold_window) if x[0] > x[1]]):
                     frames.append(cur_data)
                 else:
                     # We're finished
@@ -161,12 +175,11 @@ class LongListener(object):
 
         return speech
 
-    def terminal_visual(self, rolling_window, height=20):
+    def terminal_visual(self, rolling_window, height=20, maximum_intensity=10000):
         """
         Makes a nifty visualization based on detected audio levels.
         Prints output, doesn't return anything
         """
-        maximum_intensity = 10000
         level_size = maximum_intensity / height
 
         if not self.first_pass:
@@ -228,3 +241,12 @@ def level_color(level_rank):
         return 'cyan'
     else:
         return 'blue'
+
+
+def mean(list):
+    return sum(list) / len(list)
+
+
+def std(list):
+    var = 1 / len(list) * sum([(mean(list) - i)**2 for i in list])
+    return math.sqrt(var)
